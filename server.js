@@ -32,14 +32,14 @@ app.engine('handlebars', exphbs({defaultLayout: 'main'}));
 app.set('view engine', 'handlebars');
 
 
-if(precess.env.NODE_ENV == 'production'){
+//if(precess.env.NODE_ENV == 'production'){
 
-    mongoose.connect('');
+  //  mongoose.connect('');
      
-}
-else{
+//}
+//else{
     mongoose.connect('mongoseb://localhost/news-scraper');
-}
+//}
 
 var db = mongoose.connection;
 
