@@ -3,11 +3,12 @@
 var require = require('mongoose');
 //create schema
 
-var schema = Mongoose.Schema;
+var Schema = mongoose.Schema;
 
 //create comment Schema
 
-var CommentSchema = new schema({
+
+var CommentSchema = new Schema({
     // Authors name
     author: {
         type: String

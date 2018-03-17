@@ -1,3 +1,5 @@
+// import { Mongoose } from 'mongoose';
+
 // homework - week 18 .......
 
 // web scrapper
@@ -34,12 +36,14 @@ app.set('view engine', 'handlebars');
 
 //if(precess.env.NODE_ENV == 'production'){
 
-  //  mongoose.connect('');
+  //  mongoose.connect('92ac58b3-422e-4fdc-8e83-89fd748c5686');
      
 //}
 //else{
-    mongoose.connect('mongoseb://localhost/news-scraper');
+    // Mongoose.Promise ="Promise";
+    mongoose.connect('mongosedb://localhost/news-scraper');
 //}
+useMongoClient = true;
 
 var db = mongoose.connection;
 
