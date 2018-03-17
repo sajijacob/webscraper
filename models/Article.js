@@ -46,4 +46,4 @@ var Article = mongoose.modelNames('Article', ArticleSchema)
 
 //export the Modal
 
-module.exports = Article;
+module.exports = {Article};

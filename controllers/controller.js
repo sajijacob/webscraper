@@ -1,146 +1,207 @@
+// Node Dependencies
 var express = require('express');
 var router = express.Router();
 var path = require('path');
 var request = require('request'); // for web-scraping
-var cheerio = require('cheerio');
+var cheerio = require('cheerio'); // for web-scraping
 
+// Import the Comment and Article models
 var Comment = require('../models/Comment.js');
 var Article = require('../models/Article.js');
 
- router.get('/', function (req, res){
-     //scrape data
-res.redirect('/scrape');
- });
+// Index Page Render (first visit to the site)
+router.get('/', function (req, res){
 
- router.get('/articles', function(req, res){
-     //sort newest on top
-    Article.find().sort({_id: -1})
+  // Scrape data
+  res.redirect('/scrape');
 
+});
+
+
+// Articles Page Render
+router.get('/articles', function (req, res){
+
+  // Query MongoDB for all article entries (sort newest to top, assuming Ids increment)
+  Article.find({}).sort({_id: -1})
+
+    // But also populate all of the comments associated with the articles.
     .populate('comments')
 
+    // Then, send them to the handlebars template to be rendered
     .exec(function(err, doc){
-
-        if(err){
-            console.log(err);
-        }
-        else{
-            var hbsObject = {articles: doc}
-            res.render('index', hbsObject);
-        }
+      // log any errors
+      if (err){
+        console.log(err);
+      } 
+      // or send the doc to the browser as a json object
+      else {
+        var hbsObject = {articles: doc}
+        res.render('index', hbsObject);
+        // res.json(hbsObject)
+      }
     });
 
- });
+});
 
- // web scrape route
 
- router.get('/scrape', function(req, res){
+// Web Scrape Route
+router.get('/scrape', function(req, res) {
 
-        request('http://www.reuters.com/', function(error, response,html){
+  // First, grab the body of the html with request
+  request('http://www.reuters.com/', function(error, response, html) {
 
-            var $ = cheerio.load(html);
+    // Then, load html into cheerio and save it to $ for a shorthand selector
+    var $ = cheerio.load(html);
 
-            var titlesArray = [];
+    // This is an error handler for the Onion website only, they have duplicate articles for some reason...
+    var titlesArray = [];
 
-            $('article.inner').each(function(i, element){
+    // Now, grab every everything with a class of "inner" with each "article" tag
+    $('article .inner').each(function(i, element) {
 
-                var result = {};
+        // Create an empty result object
+        var result = {};
 
-                result.title = $(this).children('header').children('h2').text().trim() + "";
+        // Collect the Article Title (contained in the "h2" of the "header" of "this")
+        result.title = $(this).children('header').children('h2').text().trim() + ""; //convert to string for error handling later
 
-                result.link = 'http://www.reuters.com' + $(this).children('header').children('h2').children('a').attr('href').trim();
+        // Collect the Article Link (contained within the "a" tag of the "h2" in the "header" of "this")
+        result.link = 'http://www.reuters.com' + $(this).children('header').children('h2').children('a').attr('href').trim();
 
-                result.summary = $(this).children('div').tect().trim() + "";
+        // Collect the Article Summary (contained in the next "div" inside of "this")
+        result.summary = $(this).children('div').text().trim() + ""; //convert to string for error handling later
+      
 
-                if(result.title !== "" &&  result.summary !== ""){
+        // Error handling to ensure there are no empty scrapes
+        if(result.title !== "" &&  result.summary !== ""){
 
-                if(titlesArray.indexOf(result.title) == -1){
+          // BUT we must also check within each scrape since the Onion has duplicate articles...
+          // Due to async, moongoose will not save the articles fast enough for the duplicates within a scrape to be caught
+          if(titlesArray.indexOf(result.title) == -1){
 
-                    titlesArray.push(result.title);
+            // Push the saved item to our titlesArray to prevent duplicates thanks the the pesky Onion...
+            titlesArray.push(result.title);
 
-                    Article.count({ title: result.title}, function (err, test){
+            // Only add the entry to the database if is not already there
+            Article.count({ title: result.title}, function (err, test){
 
-                        if(test == 0){
+              // If the count is 0, then the entry is unique and should be saved
+              if(test == 0){
 
-                            var entry = new Article (result);
+                // Using the Article model, create a new entry (note that the "result" object has the exact same key-value pairs of the model)
+                var entry = new Article (result);
 
-                           
-                                entry.save(function(err, doc){
-
-                                    if (err){
-                                        console.log(err);
-                                    }
-
-                                    else {
-                                        console.log(doc);
-                                    }
-                                });
-                            }
-                            else{
-
-                                console.log('not saved to DB')
-
-                            }
-                        });
-                    }
-                            else{
-                                console.log('redundant  Content. Not saved to DB.')
-                            }
-                        }
-
-                            else{
-                                console.log('Empty Content,')
-                            }
-                        
-                    });
-                    res.redirect('/articles');
-
-                });
-            });
-
-            router.post('/add/comment/:id', function(req, res){
-                var articleId = req.params.id;
-                var commentAuthor = req.body.name;
-                var commentContent = req.body.Comment;
-
-                var result = {
-
-                    author: commentAuthor,
-                    Content: commentContent
-                };
-
-                var entry = new Comment (result);
-
-                entry.save(function(err, doc){
-                    if(err) {
-                        console.log(err);
-                        }
-                        else{
-                            Article.findOneAndUpdate({'_id': articleId}, {$push: {'comments':doc._id}}, {new: true})
-                            .exec(function(err, doc){
-                                if(err){
-                                    console.log(err);
-                                } else{
-                                    res.sendStatus(200);
-                                }
-                            });
-                           
-                        }
+                // Save the entry to MongoDB
+                entry.save(function(err, doc) {
+                  // log any errors
+                  if (err) {
+                    console.log(err);
+                  } 
+                  // or log the doc that was saved to the DB
+                  else {
+                    console.log(doc);
+                  }
                 });
 
+              }
+              // Log that scrape is working, just the content was already in the Database
+              else{
+                console.log('Redundant Database Content. Not saved to DB.')
+              }
+
             });
+        }
+        // Log that scrape is working, just the content was missing parts
+        else{
+          console.log('Redundant Onion Content. Not Saved to DB.')
+        }
 
-            router.post('/remove/comment/:id', function(req, res){
-                var commentId = req.params.id;
-                Comment.findIdAndRemove(commentId, function(err, todo){
-                    if(err) {
-                        console.log(err);
-                    }
-                    else{
-                        res.sendStatus(200);
-                    }
-                });
-            });
+      }
+      // Log that scrape is working, just the content was missing parts
+      else{
+        console.log('Empty Content. Not Saved to DB.')
+      }
 
-        
+    });
 
- module.exports = router;
+    // Redirect to the Articles Page, done at the end of the request for proper scoping
+    res.redirect("/articles");
+
+  });
+
+});
+
+
+// Add a Comment Route - **API**
+router.post('/add/comment/:id', function (req, res){
+
+  // Collect article id
+  var articleId = req.params.id;
+  
+  // Collect Author Name
+  var commentAuthor = req.body.name;
+
+  // Collect Comment Content
+  var commentContent = req.body.comment;
+
+  // "result" object has the exact same key-value pairs of the "Comment" model
+  var result = {
+    author: commentAuthor,
+    content: commentContent
+  };
+
+  // Using the Comment model, create a new comment entry
+  var entry = new Comment (result);
+
+  // Save the entry to the database
+  entry.save(function(err, doc) {
+    // log any errors
+    if (err) {
+      console.log(err);
+    } 
+    // Or, relate the comment to the article
+    else {
+      // Push the new Comment to the list of comments in the article
+      Article.findOneAndUpdate({'_id': articleId}, {$push: {'comments':doc._id}}, {new: true})
+      // execute the above query
+      .exec(function(err, doc){
+        // log any errors
+        if (err){
+          console.log(err);
+        } else {
+          // Send Success Header
+          res.sendStatus(200);
+        }
+      });
+    }
+  });
+
+});
+
+
+
+
+// Delete a Comment Route
+router.post('/remove/comment/:id', function (req, res){
+
+  // Collect comment id
+  var commentId = req.params.id;
+
+  // Find and Delete the Comment using the Id
+  Comment.findByIdAndRemove(commentId, function (err, todo) {  
+    
+    if (err) {
+      console.log(err);
+    } 
+    else {
+      // Send Success Header
+      res.sendStatus(200);
+    }
+
+  });
+
+});
+
+
+// Export Router to Server.js
+module.exports = router;

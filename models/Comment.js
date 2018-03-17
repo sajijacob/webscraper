@@ -13,7 +13,7 @@ var CommentSchema = new Schema({
     author: {
         type: String
     },
-    contenet: {
+    content: {
         type: String
     }
 });
