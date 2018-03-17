@@ -115,7 +115,7 @@ res.redirect('/scrape');
                         console.log(err);
                         }
                         else{
-                            Article.findOneAndUpdate({'_id: articleId'}, {$push: {'comment': doc._id}}, {new: true})
+                            Article.findOneAndUpdate({'_id': articleId}, {$push: {'comments':doc._id}}, {new: true})
                             .exec(function(err, doc){
                                 if(err){
                                     console.log(err);

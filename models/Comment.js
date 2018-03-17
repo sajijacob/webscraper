@@ -1,6 +1,6 @@
 // require Mongoose
 
-var require = require('mongoose');
+var mongoose = require('mongoose');
 //create schema
 
 var Schema = mongoose.Schema;

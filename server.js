@@ -40,10 +40,15 @@ app.set('view engine', 'handlebars');
      
 //}
 //else{
-    // Mongoose.Promise ="Promise";
-    mongoose.connect('mongosedb://localhost/news-scraper');
-//}
-useMongoClient = true;
+//     // Mongoose.Promise ="Promise";
+//     mongoose.connect('mongosedb://localhost/news-scraper');
+// //}
+// useMongoClient = true;
+
+mongoose.Promise = Promise;
+mongoose.connect("mongodb://localhost/news-scraper", {
+  //useMongoClient: true
+});
 
 var db = mongoose.connection;
 
